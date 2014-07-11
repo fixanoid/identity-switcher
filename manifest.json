@@ -3,6 +3,7 @@
   "version" : "0.1",
   "description" : "Identity Switcher allows for local recording of open tabs, bookmarks, and cookies per user's identity",
   "permissions": [
+    "storage",
     "cookies",
     "bookmarks",
     "tabs",

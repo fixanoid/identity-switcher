@@ -16,6 +16,9 @@
 
 
 function init() {
+	// load profiles.
+	ProfileManager.load();
+
 	chrome.runtime.onMessage.addListener(
 		function(request, sender, sendResponse) {
 			if (request.action == 'new-identity') {
@@ -26,18 +29,61 @@ function init() {
 }
 
 
-
+var c = {};
 function getAllCookies() {
+	c = {};
 	chrome.cookies.getAllCookieStores(function(stores) {
 		for (var i = 0; i < stores.length; i++) {
-			console.log(stores[i].id);
-			chrome.cookies.getAll({storeId: stores[i].id}, function(cookies) {
-				for (var j = 0; j < cookies.length; j++) {
-					console.log(cookies[j].name + '|' + cookies[j].value);
-				}
-			});
+			(function(store) {
+				chrome.cookies.getAll({storeId: store}, function(cookies) {
+					for (var j = 0; j < cookies.length; j++) {
+						var jc = JSON.stringify(cookies[j]);
+						c[cookies[j].storeId + '|' + j] = jc;
+					}
+
+					CookieManager.complete();
+				});
+			})(stores[i].id);
 		}
 	});
 }
+
+var ProfileManager = {
+	profiles: {},
+	load: function() {
+		this.profiles = chrome.storage['profiles'];
+
+		if (this.profiles == undefined) {
+			this.profiles = {};
+		}
+	},
+
+	add: function(p) {
+		this.profiles[p.name] = p;
+	},
+
+	store: function() {
+		if (!this.profiles) {
+			return;
+		}
+
+		chrome.storage['profiles'] = this.profiles;
+	}
+};
+
+var CookieManager = {
+	complete: function() {
+		var profile = {
+			'name': '',
+			'cookies': c
+		}
+
+		profile.name = 'temp';
+
+		ProfileManager.add(profile);
+
+		ProfileManager.store();
+	}
+};
 
 init();
