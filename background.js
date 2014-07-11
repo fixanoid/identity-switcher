@@ -48,10 +48,17 @@ function getAllCookies() {
 	});
 }
 
+var storage = chrome.storage.local;
 var ProfileManager = {
 	profiles: {},
 	load: function() {
-		this.profiles = chrome.storage['profiles'];
+		storage.get('profiles', function(o) {
+			if (!o.profiles) {
+				return;
+			}
+
+			ProfileManager.profiles = o.profiles;
+		});
 
 		if (this.profiles == undefined) {
 			this.profiles = {};
@@ -67,7 +74,7 @@ var ProfileManager = {
 			return;
 		}
 
-		chrome.storage['profiles'] = this.profiles;
+		storage.set({'profiles': this.profiles});
 	}
 };
 
