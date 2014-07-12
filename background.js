@@ -23,34 +23,36 @@ function init() {
 		function(request, sender, sendResponse) {
 			if (request.action == 'new-identity') {
 				// Request to save identity
-				getAllCookies();
+				ProfileManager.collect();
+			} else if (request.action == 'get-profiles') {
+				// popup needs all profiles
+
+				// TODO: probably should only send names/ids
+				sendResponse(ProfileManager.profiles);
 			}
 		});
 }
 
-
-var c = {};
-function getAllCookies() {
-	c = {};
-	chrome.cookies.getAllCookieStores(function(stores) {
-		for (var i = 0; i < stores.length; i++) {
-			(function(store) {
-				chrome.cookies.getAll({storeId: store}, function(cookies) {
-					for (var j = 0; j < cookies.length; j++) {
-						var jc = JSON.stringify(cookies[j]);
-						c[cookies[j].storeId + '|' + j] = jc;
-					}
-
-					CookieManager.complete();
-				});
-			})(stores[i].id);
-		}
-	});
-}
+var current;
 
 var storage = chrome.storage.local;
 var ProfileManager = {
 	profiles: {},
+
+	collect: function() {
+		var profile = {};
+		profile.name = 'temp';
+		profile.cookies = {};
+		profile.tabs = {};
+
+		current = profile;
+
+		this.add(profile);
+
+		CookieManager.getAllCookies();
+		TabsManager.getAllTabs();
+	},
+
 	load: function() {
 		storage.get('profiles', function(o) {
 			if (!o.profiles) {
@@ -75,21 +77,61 @@ var ProfileManager = {
 		}
 
 		storage.set({'profiles': this.profiles});
+	},
+
+	listen: function(e) {
+		if (e == 'cookiesComplete') {
+			current.cookiesComplete = true;
+		} else if (e == 'tabsComplete') {
+			current.tabsComplete = true;
+		}
+
+		if (current.tabsComplete && current.cookiesComplete) {
+			delete current.tabsComplete;
+			delete current.cookiesComplete;
+
+			this.store();
+		}
 	}
 };
 
 var CookieManager = {
 	complete: function() {
-		var profile = {
-			'name': '',
-			'cookies': c
-		}
+		ProfileManager.listen('cookiesComplete');
+	},
 
-		profile.name = 'temp';
+	getAllCookies: function() {
+		chrome.cookies.getAllCookieStores(function(stores) {
+			for (var i = 0; i < stores.length; i++) {
+				(function(store) {
+					chrome.cookies.getAll({storeId: store}, function(cookies) {
+						for (var j = 0; j < cookies.length; j++) {
+							var jc = JSON.stringify(cookies[j]);
+							current.cookies[cookies[j].storeId + '|' + j] = jc;
+						}
 
-		ProfileManager.add(profile);
+						CookieManager.complete();
+					});
+				})(stores[i].id);
+			}
+		});
+	}
+};
 
-		ProfileManager.store();
+var TabsManager = {
+	complete: function() {
+		ProfileManager.listen('tabsComplete');
+	},
+
+	getAllTabs: function() {
+		chrome.tabs.query({}, function(tabs) {
+			for (var i = 0; i < tabs.length; i++) {
+				var t = JSON.stringify(tabs[i]);
+				current.tabs[tabs[i].id] = t;
+			}
+
+			TabsManager.complete();
+		});
 	}
 };
 
