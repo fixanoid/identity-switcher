@@ -39,6 +39,19 @@ var storage = chrome.storage.local;
 var ProfileManager = {
 	profiles: {},
 
+	clear: function() {
+		// nukes the browsers cookies and tabs
+	},
+
+	restore: function(profileName) {
+		// check if requested profile name exists in profiles
+
+		// reset everything before loading cookies and tabs
+		this.clear();
+
+		// load cookies and tabs
+	},
+
 	collect: function() {
 		var profile = {};
 		profile.name = 'temp';
