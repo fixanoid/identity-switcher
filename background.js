@@ -41,15 +41,25 @@ var ProfileManager = {
 
 	clear: function() {
 		// nukes the browsers cookies and tabs
+		CookieManager.nuke();
+
+		chrome.tabs.create({}, function(tab) {
+			TabsManager.close(tab.id);
+		});
 	},
 
 	restore: function(profileName) {
 		// check if requested profile name exists in profiles
+		if (!(profileName in profiles)) {
+			return;
+		}
 
 		// reset everything before loading cookies and tabs
 		this.clear();
 
 		// load cookies and tabs
+		CookieManager.restore(profiles[profileName].cookies);
+		TabsManager.restore(profiles[profileName].tabs);
 	},
 
 	collect: function() {
@@ -113,6 +123,22 @@ var CookieManager = {
 		ProfileManager.listen('cookiesComplete');
 	},
 
+	restore: function(cookies) {
+		for (var cookie in cookies) {
+			var c = JSON.parse(cookies[cookie]);
+
+			var url = c.domain + c.path;
+			if (url.charAt(0) == '.') {
+				url = url.substring(1);
+			}
+
+			url = 'http://' + url;
+
+			chrome.cookies.set({ url: url, name: c.name, value: c.value, domain: c.domain, path: c.path, 
+				secure: c.secure, httpOnly: c.httpOnly, expirationDate: c.expirationDate });
+		}
+	},
+
 	getAllCookies: function() {
 		chrome.cookies.getAllCookieStores(function(stores) {
 			for (var i = 0; i < stores.length; i++) {
@@ -128,12 +154,45 @@ var CookieManager = {
 				})(stores[i].id);
 			}
 		});
+	},
+
+	nuke: function() {
+		chrome.cookies.getAllCookieStores(function(stores) {
+			for (var i = 0; i < stores.length; i++) {
+				(function(store) {
+					chrome.cookies.getAll({storeId: store}, function(cookies) {
+						for (var j = 0; j < cookies.length; j++) {
+							chrome.cookies.remove({url: ('http://' + cookies[j].domain + cookies[j].path), name: cookies[j].name, storeId: cookies[j].sotreId });
+						}
+					});
+				})(stores[i].id);
+			}
+		});
 	}
 };
 
 var TabsManager = {
 	complete: function() {
 		ProfileManager.listen('tabsComplete');
+	},
+
+	restore: function(tabs) {
+		for (var tab in tabs) {
+			var t = JSON.parse(tabs[tab]);
+			chrome.tabs.create({index: t.index, url: t.url, active: t.active, pinned: t.pinned});
+		}
+	},
+
+	close: function(except) {
+		chrome.tabs.query({}, function(tabs) {
+			for (var i = 0; i < tabs.length; i++) {
+				if (tabs[i].id == except) {
+					continue;
+				}
+
+				chrome.tabs.remove(tabs[i].id);
+			}
+		});
 	},
 
 	getAllTabs: function() {
