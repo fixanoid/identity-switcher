@@ -33,6 +33,8 @@ function init() {
 				ProfileManager.restore(request.profileName);
 			} else if (request.action == 'clear-identity') {
 				// reset browsers cookies and tabs
+				current = null;
+
 				ProfileManager.clear();
 			}
 		});
@@ -110,6 +112,10 @@ var ProfileManager = {
 	},
 
 	listen: function(e) {
+		if (!current) {
+			return;
+		}
+
 		if (e == 'cookiesComplete') {
 			current.cookiesComplete = true;
 		} else if (e == 'tabsComplete') {
