@@ -249,6 +249,8 @@ var CookieManager = {
 };
 
 var TabsManager = {
+	empty: null,
+
 	complete: function(e) {
 		if (e == 'tab-get-all') {
 			ProfileManager.listen('tabsComplete');
@@ -262,9 +264,12 @@ var TabsManager = {
 			var t = JSON.parse(tabs[tab]);
 			chrome.tabs.create({index: t.index, url: t.url, active: t.active, pinned: t.pinned});
 		}
+
+		chrome.tabs.remove(this.empty);
 	},
 
 	close: function(except) {
+		this.empty = except;
 		chrome.tabs.query({}, function(tabs) {
 			for (var i = 0; i < tabs.length; i++) {
 				if (tabs[i].id == except) {
