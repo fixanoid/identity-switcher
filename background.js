@@ -31,6 +31,9 @@ function init() {
 				sendResponse(ProfileManager.profiles);
 			} else if (request.action == 'load-profile') {
 				ProfileManager.restore(request.profileName);
+			} else if (request.action == 'clear-identity') {
+				// reset browsers cookies and tabs
+				ProfileManager.clear();
 			}
 		});
 }
