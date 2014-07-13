@@ -16,7 +16,7 @@
       "default_popup": "popup.html"
    },
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [ "js/jquery-2.1.0.min.js", "background.js" ]
   },
   "manifest_version": 2
 }

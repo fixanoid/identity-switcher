@@ -16,6 +16,8 @@
 
 
 function init() {
+	// ProfileManager.init();
+
 	// load profiles.
 	ProfileManager.load();
 
@@ -33,18 +35,59 @@ function init() {
 				ProfileManager.restore(request.profileName);
 			} else if (request.action == 'clear-identity') {
 				// reset browsers cookies and tabs
-				current = null;
+				ProfileManager.current = null;
 
 				ProfileManager.clear();
 			}
 		});
 }
 
-var current;
-
 var storage = chrome.storage.local;
 var ProfileManager = {
+	current: null,
 	profiles: {},
+
+	/*
+
+	init: function() {
+		$(this).bind( 'cookies-complete', function(e, o) {
+			if (o) {
+				o.cookiesComplete = true;
+			}
+
+			e.stopPropagation();
+		} );
+
+		$(this).bind( 'tabs-complete', function(e, o) {
+			if (o) {
+				current.tabsComplete = true;
+			}
+
+			e.stopPropagation();
+		} );
+
+		$(this).bind( 'tabs-close', function(e, o) {
+			if (o) {
+				current.tabsClosed = true;
+			}
+
+			e.stopPropagation();
+		} );
+
+		$(this).bind( 'cookie-nuke', function(e, o) {
+			if (o) {
+				current.cookiesNuked = true;
+			}
+
+			e.stopPropagation();
+		} );
+
+		$(this).bind( 'cookie-restore', function(e, o) {
+			e.stopPropagation();
+		} );
+	},
+
+	*/
 
 	clear: function() {
 		// nukes the browsers cookies and tabs
@@ -64,7 +107,7 @@ var ProfileManager = {
 		// reset everything before loading cookies and tabs
 		this.clear();
 
-		current = this.profiles[profileName];
+		this.current = this.profiles[profileName];
 
 		// load cookies and tabs
 		// CookieManager.restore(this.profiles[profileName].cookies);
@@ -73,11 +116,11 @@ var ProfileManager = {
 
 	collect: function() {
 		var profile = {};
-		profile.name = 'temp';
+		profile.name = 'current';
 		profile.cookies = {};
 		profile.tabs = {};
 
-		current = profile;
+		this.current = profile;
 
 		this.add(profile);
 
@@ -112,34 +155,34 @@ var ProfileManager = {
 	},
 
 	listen: function(e) {
-		if (!current) {
+		if (!this.current) {
 			return;
 		}
 
 		if (e == 'cookiesComplete') {
-			current.cookiesComplete = true;
+			this.currentcurrent.cookiesComplete = true;
 		} else if (e == 'tabsComplete') {
-			current.tabsComplete = true;
+			this.current.tabsComplete = true;
 		} else if (e == 'tabsClose') {
-			current.tabsClosed = true;
+			this.current.tabsClosed = true;
 		} else if (e == 'cookiesNuke') {
-			current.cookiesNuked = true;
+			this.current.cookiesNuked = true;
 		} else if (e == 'cookiesRestored') {
-			TabsManager.restore(current.tabs);
+			TabsManager.restore(this.current.tabs);
 		}
 
-		if (current.tabsComplete && current.cookiesComplete) {
-			delete current.tabsComplete;
-			delete current.cookiesComplete;
+		if (this.current.tabsComplete && this.current.cookiesComplete) {
+			delete this.current.tabsComplete;
+			delete this.current.cookiesComplete;
 
 			this.store();
 		}
 
-		if (current.tabsClosed && current.cookiesNuked) {
-			delete current.tabsClosed;
-			delete current.cookiesNuked;
+		if (this.current.tabsClosed && this.current.cookiesNuked) {
+			delete this.current.tabsClosed;
+			delete this.current.cookiesNuked;
 
-			CookieManager.restore(current.cookies);
+			CookieManager.restore(this.current.cookies);
 		}
 	}
 };
@@ -178,7 +221,7 @@ var CookieManager = {
 					chrome.cookies.getAll({storeId: store}, function(cookies) {
 						for (var j = 0; j < cookies.length; j++) {
 							var jc = JSON.stringify(cookies[j]);
-							current.cookies[cookies[j].storeId + '|' + j] = jc;
+							ProfileManager.current.cookies[cookies[j].storeId + '|' + j] = jc;
 						}
 
 						CookieManager.complete('cookie-get-all');
@@ -239,7 +282,7 @@ var TabsManager = {
 		chrome.tabs.query({}, function(tabs) {
 			for (var i = 0; i < tabs.length; i++) {
 				var t = JSON.stringify(tabs[i]);
-				current.tabs[tabs[i].id] = t;
+				ProfileManager.current.tabs[tabs[i].id] = t;
 			}
 
 			TabsManager.complete('tab-get-all');
