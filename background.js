@@ -29,6 +29,8 @@ function init() {
 
 				// TODO: probably should only send names/ids
 				sendResponse(ProfileManager.profiles);
+			} else if (request.action == 'load-profile') {
+				ProfileManager.restore(request.profileName);
 			}
 		});
 }
@@ -50,16 +52,18 @@ var ProfileManager = {
 
 	restore: function(profileName) {
 		// check if requested profile name exists in profiles
-		if (!(profileName in profiles)) {
+		if (!(profileName in this.profiles)) {
 			return;
 		}
 
 		// reset everything before loading cookies and tabs
 		this.clear();
 
+		current = this.profiles[profileName];
+
 		// load cookies and tabs
-		CookieManager.restore(profiles[profileName].cookies);
-		TabsManager.restore(profiles[profileName].tabs);
+		// CookieManager.restore(this.profiles[profileName].cookies);
+		// TabsManager.restore(this.profiles[profileName].tabs);
 	},
 
 	collect: function() {
@@ -107,6 +111,12 @@ var ProfileManager = {
 			current.cookiesComplete = true;
 		} else if (e == 'tabsComplete') {
 			current.tabsComplete = true;
+		} else if (e == 'tabsClose') {
+			current.tabsClosed = true;
+		} else if (e == 'cookiesNuke') {
+			current.cookiesNuked = true;
+		} else if (e == 'cookiesRestored') {
+			TabsManager.restore(current.tabs);
 		}
 
 		if (current.tabsComplete && current.cookiesComplete) {
@@ -115,12 +125,23 @@ var ProfileManager = {
 
 			this.store();
 		}
+
+		if (current.tabsClosed && current.cookiesNuked) {
+			delete current.tabsClosed;
+			delete current.cookiesNuked;
+
+			CookieManager.restore(current.cookies);
+		}
 	}
 };
 
 var CookieManager = {
-	complete: function() {
-		ProfileManager.listen('cookiesComplete');
+	complete: function(e) {
+		if (e == 'cookie-get-all') {
+			ProfileManager.listen('cookiesComplete');
+		} else if (e == 'cookie-nuke') {
+			ProfileManager.listen('cookiesNuke');
+		}
 	},
 
 	restore: function(cookies) {
@@ -137,6 +158,8 @@ var CookieManager = {
 			chrome.cookies.set({ url: url, name: c.name, value: c.value, domain: c.domain, path: c.path, 
 				secure: c.secure, httpOnly: c.httpOnly, expirationDate: c.expirationDate });
 		}
+
+		ProfileManager.listen('cookiesRestored');
 	},
 
 	getAllCookies: function() {
@@ -149,7 +172,7 @@ var CookieManager = {
 							current.cookies[cookies[j].storeId + '|' + j] = jc;
 						}
 
-						CookieManager.complete();
+						CookieManager.complete('cookie-get-all');
 					});
 				})(stores[i].id);
 			}
@@ -164,6 +187,8 @@ var CookieManager = {
 						for (var j = 0; j < cookies.length; j++) {
 							chrome.cookies.remove({url: ('http://' + cookies[j].domain + cookies[j].path), name: cookies[j].name, storeId: cookies[j].sotreId });
 						}
+
+						CookieManager.complete('cookie-nuke');
 					});
 				})(stores[i].id);
 			}
@@ -172,8 +197,12 @@ var CookieManager = {
 };
 
 var TabsManager = {
-	complete: function() {
-		ProfileManager.listen('tabsComplete');
+	complete: function(e) {
+		if (e == 'tab-get-all') {
+			ProfileManager.listen('tabsComplete');
+		} else if (e == 'tab-close') {
+			ProfileManager.listen('tabsClose');
+		}
 	},
 
 	restore: function(tabs) {
@@ -192,6 +221,8 @@ var TabsManager = {
 
 				chrome.tabs.remove(tabs[i].id);
 			}
+
+			TabsManager.complete('tab-close');
 		});
 	},
 
@@ -202,7 +233,7 @@ var TabsManager = {
 				current.tabs[tabs[i].id] = t;
 			}
 
-			TabsManager.complete();
+			TabsManager.complete('tab-get-all');
 		});
 	}
 };
